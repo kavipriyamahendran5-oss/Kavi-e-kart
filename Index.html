@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="bookApp">
+<head>
+    <meta charset="UTF-8">
+    <title>Book Search</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.3/angular.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f6f8; color: #333; }
+        .container { width: 90%; max-width: 1100px; margin: 40px auto; }
+        h1 { text-align: center; font-size: 40px; margin-bottom: 30px; }
+        .search-box { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        .search-box input { width: 60%; padding: 14px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+        .search-box button { padding: 14px 25px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; background-color: #333; color: white; }
+        .search-box button:hover { background-color: #555; }
+        .loading, .error, .result-count { text-align: center; font-size: 18px; margin: 20px; }
+        .error { color: #d32f2f; font-weight: bold; }
+        .books-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .book-card { display: flex; gap: 20px; background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .book-image { width: 130px; min-width: 130px; height: 190px; display: flex; justify-content: center; align-items: center; background-color: #eee; border-radius: 5px; overflow: hidden; }
+        .book-image img { width: 100%; height: 100%; object-fit: cover; }
+        .no-image { text-align: center; color: #777; font-size: 14px; }
+        .book-info { flex: 1; }
+        .book-info h2 { margin-top: 0; font-size: 20px; }
+        .author { color: #555; }
+        .published { color: #666; font-size: 14px; }
+        .description { line-height: 1.5; color: #555; font-size: 14px; }
+        .book-info a { display: inline-block; margin-top: 10px; padding: 8px 14px; background-color: #333; color: white; text-decoration: none; border-radius: 5px; }
+        .book-info a:hover { background-color: #555; }
+        .no-results { text-align: center; margin-top: 50px; }
+        @media (max-width: 700px) {
+            .search-box { flex-direction: column; }
+            .search-box input { width: 100%; }
+            .books-container { grid-template-columns: 1fr; }
+            .book-card { flex-direction: column; }
+            .book-image { margin: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" ng-controller="BookController">
+        <h1>Book Search</h1>
+        <div class="search-box">
+            <input type="text" ng-model="searchQuery" placeholder="Enter book name..." ng-keypress="searchOnEnter($event)">
+            <button ng-click="searchBooks()">Search</button>
+        </div>
+        <p class="loading" ng-if="loading">Searching for books...</p>
+        <p class="error" ng-if="error">{{ error }}</p>
+        <p class="result-count" ng-if="books.length > 0">Found {{ books.length }} books</p>
+        <div class="books-container">
+            <div class="book-card" ng-repeat="book in books">
+                <div class="book-image">
+                    <img ng-if="book.volumeInfo.imageLinks" ng-src="{{ book.volumeInfo.imageLinks.thumbnail }}" alt="Book Cover">
+                    <div class="no-image" ng-if="!book.volumeInfo.imageLinks">No Cover</div>
+                </div>
+                <div class="book-info">
+                    <h2>{{ book.volumeInfo.title }}</h2>
+                    <p class="author" ng-if="book.volumeInfo.authors"><strong>Author:</strong> {{ book.volumeInfo.authors.join(', ') }}</p>
+                    <p class="published" ng-if="book.volumeInfo.publishedDate"><strong>Published:</strong> {{ book.volumeInfo.publishedDate }}</p>
+                    <p class="description" ng-if="book.volumeInfo.description">{{ book.volumeInfo.description | limitTo:300 }}<span ng-if="book.volumeInfo.description.length > 300">...</span></p>
+                    <a ng-if="book.volumeInfo.infoLink" ng-href="{{ book.volumeInfo.infoLink }}" target="_blank">View Book</a>
+                </div>
+            </div>
+        </div>
+        <div class="no-results" ng-if="searched && books.length === 0 && !loading">
+            <h2>No books found</h2>
+            <p>Try searching for another book.</p>
+        </div>
+    </div>
+
+<script>
+var app = angular.module("bookApp", []);
+app.controller("BookController", function($scope, $http) {
+    $scope.searchQuery = "";
+    $scope.books = [];
+    $scope.loading = false;
+    $scope.error = "";
+    $scope.searched = false;
+
+    $scope.searchBooks = function() {
+        var query = $scope.searchQuery.trim();
+        if (query === "") {
+            $scope.error = "Please enter a book name.";
+            $scope.books = [];
+            return;
+        }
+        $scope.error = "";
+        $scope.books = [];
+        $scope.loading = true;
+        $scope.searched = true;
+
+        var url = "https://www.googleapis.com/books/v1/volumes?q=" + encodeURIComponent(query) + "&maxResults=20";
+
+        $http.get(url).then(function(response) {
+            if (response.data.items) {
+                $scope.books = response.data.items;
+            } else {
+                $scope.books = [];
+            }
+        }).catch(function(error) {
+            $scope.error = "Something went wrong while searching for books.";
+        }).finally(function() {
+            $scope.loading = false;
+        });
+    };
+
+    $scope.searchOnEnter = function(event) {
+        if (event.keyCode === 13) {
+            $scope.searchBooks();
+        }
+    };
+});
+</script>
+</body>
+</html>
